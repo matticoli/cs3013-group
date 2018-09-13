@@ -1,16 +1,39 @@
 #include <linux/kernel.h>
+#include <linux/list.h>
 #include <linux/module.h>
+#include <linux/sched.h>
 #include <linux/syscalls.h>
+#include <linux/time.h>
+#include <asm/current.h>
+#include <asm-generic/cputime.h>
 
 unsigned long **sys_call_table;
+
+
+typedef struct processinfo {
+  long state;
+  pid_t pid;
+  pid_t parent_pid;
+  pid_t youngest_child;
+  pid_t younger_sibling;
+  pid_t older_sibling;
+  uid_t uid;
+  long long start_time;
+  long long user_time;
+  long long sys_time;
+  long long cu_time;
+  long long cs_time;
+} pinfo;// struct processinfo
 
 asmlinkage long (*ref_sys_cs3013_syscall2)(void);
 
 asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
-    printk(KERN_INFO "\"'Hello world?!' More like 'Goodbye, world!' EXTERMINATE!\" -- Dalek");
-    return 0;
-}
+    printk(KERN_INFO "P2M: Here's the struct: %p\n", info);
 
+    // pinfo processData = malloc(sizeof(pinfo));
+    return 0;
+
+}
 static unsigned long **find_sys_call_table(void) {
   unsigned long int offset = PAGE_OFFSET;
   unsigned long **sct;

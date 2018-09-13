@@ -1,4 +1,4 @@
-obj-m := openInterceptmodule.o
+obj-m := phase2module.o
 KDIR := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 

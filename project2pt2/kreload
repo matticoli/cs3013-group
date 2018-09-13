@@ -1,0 +1,13 @@
+#!/bin/bash
+make
+sudo rmmod phase2module
+sudo insmod phase2module.ko
+gcc userland/phase2test.c -o userland/phase2test
+echo ===========
+echo    USER
+echo ===========
+userland/phase2test
+echo ===========
+echo    KERNEL
+echo ===========
+cat /var/log/syslog | grep P2M | tail
