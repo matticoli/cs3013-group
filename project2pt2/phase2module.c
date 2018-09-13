@@ -29,6 +29,13 @@ asmlinkage long (*ref_sys_cs3013_syscall2)(void);
 
 asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
     printk(KERN_INFO "P2M: Here's the struct: %p\n", info);
+    printk(KERN_INFO "P2M: State: %ld\n", current->state);
+    printk(KERN_INFO "P2M: PID: %ld\n", current->pid);
+    printk(KERN_INFO "P2M: Parent: %ld\n", current->parent->pid);
+    // printk(KERN_INFO "P2M: Youngest: %ld\n", current->children); TODO get data from list
+    printk(KERN_INFO "P2M: UID: %ld\n", current->cred->uid);
+    printk(KERN_INFO "P2M: Start Time: %llu\n", current->start_time);
+
 
     // pinfo processData = malloc(sizeof(pinfo));
     return 0;

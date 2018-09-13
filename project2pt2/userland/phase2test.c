@@ -28,6 +28,7 @@ long testCall2 ( pinfo * info) {
 
 int main() {
 	pinfo *info = malloc(sizeof(pinfo));
+	printf("Hi, I'm a user program! My PID is %d\n", getpid());
 	printf("Running test call 2, struct addr %p\n", info);
 	testCall2(info);
 }
