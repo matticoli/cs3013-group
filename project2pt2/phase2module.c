@@ -32,9 +32,46 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
     printk(KERN_INFO "P2M: State: %ld\n", current->state);
     printk(KERN_INFO "P2M: PID: %ld\n", current->pid);
     printk(KERN_INFO "P2M: Parent: %ld\n", current->parent->pid);
+
+//TODO: traverse linked list to find youngest child (latest start_time)
+//return -1 to field if no youngest child
+//print pid of youngest child
+
+//TODO: traverse linked list to find younger sibling (start_time largest but nearest
+//to process start time)
+//return -1 to field if no younger sibling
+//print pid of youngest sibling
+
+//TODO: traverse linked list to find older sibling (start time farthest from process
+// start time)
+//return -1 if no older sibling
+//print pid of oldest sibling
+
+
+struct list_head *position = NULL; //position counter
+long long int latestStart = 0; //store latest start seen
+struct task_struct* child;
+long int youngChild = 0; //store pid of youngest child seen
+list_for_each_entry(position, current, children){
+  //if the start time of this child is later than current latest start,
+  //store child as youngest child
+  if(list_entry(position, struct task_struct, start_time) > current->start_time){
+    youngChild = list_entry(position, struct task_struct, pid);
+    latestStart = list_entry(position, struct task_struct, start_time);
+  }
+}
+//if no youngest child is found
+if(latestStart == 0){
+  youngChild = -1;
+}
+
     // printk(KERN_INFO "P2M: Youngest: %ld\n", current->children); TODO get data from list
     printk(KERN_INFO "P2M: UID: %ld\n", current->cred->uid);
     printk(KERN_INFO "P2M: Start Time: %llu\n", current->start_time);
+    printk(KERN_INFO "P2M: User Time %llu\n", cputime_to_usecs(current->utime));
+    printk(KERN_INFO "P2M: System Time %llu\n", cputime_to_usecs(current->stime));
+
+
 
 
     // pinfo processData = malloc(sizeof(pinfo));
