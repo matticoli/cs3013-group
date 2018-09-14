@@ -1,0 +1,1 @@
+cmd_/home/ahjicha/Desktop/cs3013-group/project2pt2/phase2module.ko := ld -r -m elf_i386 -T ./scripts/module-common.lds --build-id  -o /home/ahjicha/Desktop/cs3013-group/project2pt2/phase2module.ko /home/ahjicha/Desktop/cs3013-group/project2pt2/phase2module.o /home/ahjicha/Desktop/cs3013-group/project2pt2/phase2module.mod.o

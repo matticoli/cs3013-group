@@ -1,4 +1,5 @@
 #!/bin/bash
+make clean
 make
 sudo rmmod phase2module
 sudo insmod phase2module.ko
@@ -7,7 +8,8 @@ echo ===========
 echo    USER
 echo ===========
 userland/phase2test
+sleep 4
 echo ===========
 echo    KERNEL
 echo ===========
-cat /var/log/syslog | grep P2M | tail
+cat /var/log/syslog | grep P2M | tail -n 40

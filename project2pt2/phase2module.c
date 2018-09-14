@@ -4,8 +4,8 @@
 #include <linux/sched.h>
 #include <linux/syscalls.h>
 #include <linux/time.h>
-#include <asm/current.h>
-#include <asm-generic/cputime.h>
+#include <asm/cputime.h>
+#include <asm/cputime.h>
 
 unsigned long **sys_call_table;
 
@@ -28,7 +28,8 @@ typedef struct processinfo {
 asmlinkage long (*ref_sys_cs3013_syscall2)(void);
 
 asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
-    printk(KERN_INFO "P2M: Here's the struct: %p\n", info);
+    printk(KERN_INFO "\nP2M: =========================\n");
+    printk(KERN_INFO "\n\nP2M: Here's the struct: %p\n", info);
     printk(KERN_INFO "P2M: State: %ld\n", current->state);
     printk(KERN_INFO "P2M: PID: %ld\n", current->pid);
     printk(KERN_INFO "P2M: Parent: %ld\n", current->parent->pid);
@@ -47,23 +48,64 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
 //return -1 if no older sibling
 //print pid of oldest sibling
 
+  printk(KERN_INFO "Les Enfants:\n");
 
-struct list_head *position = NULL; //position counter
-long long int latestStart = 0; //store latest start seen
-struct task_struct* child;
-long int youngChild = 0; //store pid of youngest child seen
-list_for_each_entry(position, current, children){
-  //if the start time of this child is later than current latest start,
-  //store child as youngest child
-  if(list_entry(position, struct task_struct, start_time) > current->start_time){
-    youngChild = list_entry(position, struct task_struct, pid);
-    latestStart = list_entry(position, struct task_struct, start_time);
+  struct list_head *position = NULL; //position counter
+  long long int latestStart = 0; //store latest start seen
+  struct task_struct* child = NULL;
+  long int youngChild = 0; //store pid of youngest child seen
+
+  list_for_each_entry(child, &(current->children), sibling) {
+    printk(KERN_INFO "\tP2M: Child at %p has pid %d\n", child, child->pid);
+
+    if(child->start_time > latestStart){
+      youngChild = child->pid;
+      latestStart = child->start_time;
+    }
   }
-}
-//if no youngest child is found
-if(latestStart == 0){
-  youngChild = -1;
-}
+
+  if(latestStart == 0){
+    youngChild = -1;
+  }
+
+  printk(KERN_INFO "P2M: Youngest Child PID: %ld\n", youngChild);
+
+
+  printk(KERN_INFO "P2M: Siblings:\n");
+
+  position = NULL; //position counter
+  long long int closestOlder = 0; //store latest start seen
+  long long int closestYounger = 0; //store latest start seen
+  struct task_struct* sib = NULL;
+  long int youngSibling = 0; //store pid of youngest child seen
+  long int oldSibling = 0; //store pid of youngest child seen
+
+  list_for_each_entry(sib, &(current->sibling), sibling) {
+    printk(KERN_INFO "\tP2M: Sibling at %p has pid %d\n", sib, sib->pid);
+    printk(KERN_INFO "\tP2M: Le time %lld\n", sib->start_time);
+    signed long long int diff = ((signed long long int)sib->start_time - (signed long long int)current->start_time);
+    printk(KERN_INFO "\tP2M: Le diff %lld\n", diff);
+    if(diff > 0 && diff < closestOlder) {
+      printk(KERN_INFO "\tP2M: Le diff %lld\n", diff);
+      oldSibling = sib->pid;
+      closestOlder = sib->start_time;
+    } 
+    printk(KERN_INFO "P2M: <0 %d , oldest younger: %d\n", diff < 0 , (diff > closestYounger || closestYounger == 0));
+    if(diff < 0 && (diff > closestYounger || youngSibling == 0)) {
+      youngSibling = sib->pid;
+      closestYounger = sib->start_time;
+    }
+  }
+
+    printk(KERN_INFO "P2M: Next Older Sibling PID: %ld\n", oldSibling);
+    printk(KERN_INFO "P2M: Next Younger Sibling PID: %ld\n", youngSibling);
+  if(closestYounger == 0){
+    youngSibling = -1;
+  }
+  if(closestOlder == 0){
+    oldSibling = -1;
+  }
+
 
     // printk(KERN_INFO "P2M: Youngest: %ld\n", current->children); TODO get data from list
     printk(KERN_INFO "P2M: UID: %ld\n", current->cred->uid);
@@ -86,7 +128,7 @@ static unsigned long **find_sys_call_table(void) {
     sct = (unsigned long **)offset;
 
     if (sct[__NR_close] == (unsigned long *) sys_close) {
-      printk(KERN_INFO "Interceptor: Found syscall table at address: 0x%02lX",
+      printk(KERN_INFO "Interceptor: Found syscall table at address: 0x%02lX\n",
                 (unsigned long) sct);
       return sct;
     }
