@@ -80,31 +80,38 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
   long int youngSibling = 0; //store pid of youngest child seen
   long int oldSibling = 0; //store pid of youngest child seen
 
-  list_for_each_entry(sib, &(current->sibling), sibling) {
-    printk(KERN_INFO "\tP2M: Sibling at %p has pid %d\n", sib, sib->pid);
-    printk(KERN_INFO "\tP2M: Le time %lld\n", sib->start_time);
-    signed long long int diff = ((signed long long int)sib->start_time - (signed long long int)current->start_time);
-    printk(KERN_INFO "\tP2M: Le diff %lld\n", diff);
-    if(diff > 0 && diff < closestOlder) {
-      printk(KERN_INFO "\tP2M: Le diff %lld\n", diff);
+  list_for_each_entry(sib, &(current->real_parent->children), sibling) {
+    u64 diff;
+    int isNegative;
+    if(sib->start_time >= current->start_time) {
+        diff = sib->start_time - current->start_time;
+        isNegative = 0;
+    } else {
+        diff = current->start_time - sib->start_time;
+        isNegative = 1;
+    }
+
+    // printk(KERN_INFO "\tP2M: PID %d DIFF %lld\n", sib-> pid, diff);
+    if(sib->pid != current->pid && isNegative && (diff < closestOlder || closestOlder ==0)) {
+      // printk(KERN_INFO "\tP2M: Le diff %lld\n", diff);
       oldSibling = sib->pid;
       closestOlder = sib->start_time;
     } 
-    printk(KERN_INFO "P2M: <0 %d , oldest younger: %d\n", diff < 0 , (diff > closestYounger || closestYounger == 0));
-    if(diff < 0 && (diff > closestYounger || youngSibling == 0)) {
+    // printk(KERN_INFO "P2M: <0 %d , oldest younger: %d\n", diff < 0 , (diff > closestYounger || closestYounger == 0));
+    if(sib->pid != current->pid && !isNegative && (diff < closestYounger || closestYounger == 0)) {
       youngSibling = sib->pid;
       closestYounger = sib->start_time;
     }
   }
 
-    printk(KERN_INFO "P2M: Next Older Sibling PID: %ld\n", oldSibling);
-    printk(KERN_INFO "P2M: Next Younger Sibling PID: %ld\n", youngSibling);
   if(closestYounger == 0){
     youngSibling = -1;
   }
   if(closestOlder == 0){
     oldSibling = -1;
   }
+  printk(KERN_INFO "P2M: Next Older Sibling PID: %ld\n", oldSibling);
+  printk(KERN_INFO "P2M: Next Younger Sibling PID: %ld\n", youngSibling);
 
 
     // printk(KERN_INFO "P2M: Youngest: %ld\n", current->children); TODO get data from list

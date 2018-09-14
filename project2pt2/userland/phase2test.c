@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 
@@ -39,6 +40,7 @@ int main() {
     } else if (pid == 0) {
         /* child process */
     	printf("I am a child process! My PID is %d\n", getpid());
+		testCall2(info);
     	sleep(5);
     	printf("Bye bye ~%d\n", getpid());
     	exit(0);
@@ -46,7 +48,6 @@ int main() {
     	printf("I am the parent process! Firstborn: %d\n", pid);
   //        parent process 
 		// printf("Running test call 2, struct addr %p\n", info);
-		// testCall2(info);
 
 		if ((pid = fork()) < 0) { // negative pid = error forking
 	        fprintf(stderr, "Fork error\n");
