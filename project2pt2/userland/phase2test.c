@@ -3,8 +3,9 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
-
+// Define system call
 #define __NR_cs3013_syscall2 378
 
 
@@ -19,8 +20,8 @@ typedef struct processinfo {
   long long start_time;
   long long user_time;
   long long sys_time;
-  long long cu_time;
-  long long cs_time;
+  long long cutime;
+  long long cstime;
 } pinfo;// struct processinfo
 
 long testCall2 ( pinfo * info) {
@@ -29,7 +30,7 @@ long testCall2 ( pinfo * info) {
 
 int main() {
 	pinfo *info = malloc(sizeof(pinfo));
-	printf("Hi, I'm a user program! My PID is %d\n", getpid());
+	//printf("Hi, I'm a user program! My PID is %d\n", getpid());
 
 	int pid;
 
@@ -40,9 +41,10 @@ int main() {
     } else if (pid == 0) {
         /* child process */
     	printf("I am a child process! My PID is %d\n", getpid());
+    	printf("My parent process is %d\n", getppid());
 		testCall2(info);
     	sleep(5);
-    	printf("Bye bye ~%d\n", getpid());
+    	//printf("Bye bye ~%d\n", getpid());
     	exit(0);
     } else {
     	printf("I am the parent process! Firstborn: %d\n", pid);
@@ -55,17 +57,19 @@ int main() {
 	    } else if (pid == 0) {
 	        /* child process */
 	    	printf("I am the younger child! My PID is %d\n", getpid());
+	    	printf("My parent process is %d\n", getppid());
     		printf("Running test call 2 as child, struct addr %p\n", info);
 	    	sleep(2);
 			testCall2(info);
 	    	sleep(5);
-	    	printf("Bye bye ~%d\n", getpid());
+	    	//printf("Bye bye ~%d\n", getpid());
 	    	exit(0);
 	    } else {
 	    	printf("I am the parent process! Anotha one: %d\n", pid);
 	        /* parent process */
 			printf("Running test call 2, struct addr %p\n", info);
 			testCall2(info);
+			wait(0);
 		}
 	}
 }

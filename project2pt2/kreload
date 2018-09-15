@@ -12,4 +12,4 @@ sleep 4
 echo ===========
 echo    KERNEL
 echo ===========
-cat /var/log/syslog | grep P2M | tail -n 40
+cat /var/log/syslog | grep P2M | tail -n 10

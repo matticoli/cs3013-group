@@ -5,7 +5,7 @@
 #include <linux/syscalls.h>
 #include <linux/time.h>
 #include <asm/cputime.h>
-#include <asm/cputime.h>
+#include <linux/uidgid.h>
 
 unsigned long **sys_call_table;
 
@@ -21,34 +21,22 @@ typedef struct processinfo {
   long long start_time;
   long long user_time;
   long long sys_time;
-  long long cu_time;
-  long long cs_time;
+  long long cutime;
+  long long cstime;
 } pinfo;// struct processinfo
 
 asmlinkage long (*ref_sys_cs3013_syscall2)(void);
 
 asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
-    printk(KERN_INFO "\nP2M: =========================\n");
-    printk(KERN_INFO "\n\nP2M: Here's the struct: %p\n", info);
+   // printk(KERN_INFO "\nP2M: =========================\n");
+    //printk(KERN_INFO "\n\nP2M: Here's the struct: %p\n", info);
     printk(KERN_INFO "P2M: State: %ld\n", current->state);
     printk(KERN_INFO "P2M: PID: %ld\n", current->pid);
-    printk(KERN_INFO "P2M: Parent: %ld\n", current->parent->pid);
+    printk(KERN_INFO "P2M: Parent PID: %ld\n", current->parent->pid);
 
-//TODO: traverse linked list to find youngest child (latest start_time)
-//return -1 to field if no youngest child
-//print pid of youngest child
-
-//TODO: traverse linked list to find younger sibling (start_time largest but nearest
-//to process start time)
-//return -1 to field if no younger sibling
-//print pid of youngest sibling
-
-//TODO: traverse linked list to find older sibling (start time farthest from process
-// start time)
-//return -1 if no older sibling
-//print pid of oldest sibling
-
-  printk(KERN_INFO "Les Enfants:\n");
+  //to store user and system time of children
+  long long int utimeChild = 0;
+  long long int stimeChild = 0;
 
   struct list_head *position = NULL; //position counter
   long long int latestStart = 0; //store latest start seen
@@ -56,12 +44,15 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
   long int youngChild = 0; //store pid of youngest child seen
 
   list_for_each_entry(child, &(current->children), sibling) {
-    printk(KERN_INFO "\tP2M: Child at %p has pid %d\n", child, child->pid);
+    //printk(KERN_INFO "\tP2M: Child at %p has pid %d\n", child, child->pid);
 
     if(child->start_time > latestStart){
       youngChild = child->pid;
       latestStart = child->start_time;
     }
+  utimeChild = cputime_add(utimeChild + child->utime);
+  stimeChild = cputime_add(stimeChild + child->stime);
+
   }
 
   if(latestStart == 0){
@@ -71,7 +62,7 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
   printk(KERN_INFO "P2M: Youngest Child PID: %ld\n", youngChild);
 
 
-  printk(KERN_INFO "P2M: Siblings:\n");
+  //printk(KERN_INFO "P2M: Siblings:\n");
 
   position = NULL; //position counter
   long long int closestOlder = 0; //store latest start seen
@@ -80,9 +71,11 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
   long int youngSibling = 0; //store pid of youngest child seen
   long int oldSibling = 0; //store pid of youngest child seen
 
+
   list_for_each_entry(sib, &(current->real_parent->children), sibling) {
     u64 diff;
     int isNegative;
+  
     if(sib->start_time >= current->start_time) {
         diff = sib->start_time - current->start_time;
         isNegative = 0;
@@ -119,9 +112,32 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
     printk(KERN_INFO "P2M: Start Time: %llu\n", current->start_time);
     printk(KERN_INFO "P2M: User Time %llu\n", cputime_to_usecs(current->utime));
     printk(KERN_INFO "P2M: System Time %llu\n", cputime_to_usecs(current->stime));
+    
+
+    printk(KERN_INFO "P2M: User Time of Children %llu\n", cputime_to_usecs(utimeChild));
+    printk(KERN_INFO "P2M: System Time of Children %llu\n", cputime_to_usecs(stimeChild));
 
 
+/* COPY DATA TO USER */
+//store in struct info
+pinfo *stats = malloc(sizeof(pinfo));
 
+stats->state = current->state;
+stats->pid = current->pid;
+stats->parent_pid = current->parent->pid;
+stats->youngest_child = youngChild;
+stats->older_sibling = oldSibling;
+stats->younger_sibling = youngSibling;
+stats->uid = __kuid_val(current->cred->uid);
+stats->start_time = current->start_time;
+stats->user_time = cputime_to_usecs(current->utime);
+stats->sys_time = cputime_to_usecs(current->stime);
+stats->cutime = cputime_to_usecs(utimeChild);
+stats->cstime = cputime_to_usecs(stimeChild);
+
+if (copy_to_user(info, stats, sizeof(*stats))) {
+  return EFAULT;
+}
 
     // pinfo processData = malloc(sizeof(pinfo));
     return 0;
