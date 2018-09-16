@@ -30,6 +30,7 @@ asmlinkage long (*ref_sys_cs3013_syscall2)(void);
 asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
    // printk(KERN_INFO "\nP2M: =========================\n");
     //printk(KERN_INFO "\n\nP2M: Here's the struct: %p\n", info);
+
     printk(KERN_INFO "P2M: State: %ld\n", current->state);
     printk(KERN_INFO "P2M: PID: %ld\n", current->pid);
     printk(KERN_INFO "P2M: Parent PID: %ld\n", current->parent->pid);
@@ -50,10 +51,10 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
       youngChild = child->pid;
       latestStart = child->start_time;
     }
-  utimeChild = cputime_add(utimeChild + child->utime);
-  stimeChild = cputime_add(stimeChild + child->stime);
+  utimeChild = (utimeChild + child->utime);
+  stimeChild = (stimeChild + child->stime);
 
-  }
+  } 
 
   if(latestStart == 0){
     youngChild = -1;
@@ -120,23 +121,27 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
 
 /* COPY DATA TO USER */
 //store in struct info
-pinfo *stats = malloc(sizeof(pinfo));
+    printk(KERN_INFO "P2M: Print data to send to user\n");
+pinfo stats;
 
-stats->state = current->state;
-stats->pid = current->pid;
-stats->parent_pid = current->parent->pid;
-stats->youngest_child = youngChild;
-stats->older_sibling = oldSibling;
-stats->younger_sibling = youngSibling;
-stats->uid = __kuid_val(current->cred->uid);
-stats->start_time = current->start_time;
-stats->user_time = cputime_to_usecs(current->utime);
-stats->sys_time = cputime_to_usecs(current->stime);
-stats->cutime = cputime_to_usecs(utimeChild);
-stats->cstime = cputime_to_usecs(stimeChild);
+    printk(KERN_INFO "P2M: Fill data to send to user\n");
+stats.state = current->state;
+stats.pid = current->pid;
+stats.parent_pid = current->parent->pid;
+stats.youngest_child = youngChild;
+stats.older_sibling = oldSibling;
+stats.younger_sibling = youngSibling;
+stats.uid = __kuid_val(current->cred->uid);
+stats.start_time = current->start_time;
+stats.user_time = cputime_to_usecs(current->utime);
+stats.sys_time = cputime_to_usecs(current->stime);
+stats.cutime = cputime_to_usecs(utimeChild);
+stats.cstime = cputime_to_usecs(stimeChild);
 
-if (copy_to_user(info, stats, sizeof(*stats))) {
-  return EFAULT;
+printk(KERN_INFO "P2M: Send data to user\n");
+if (copy_to_user(info, &stats, sizeof(stats))) {
+  printk(KERN_INFO "P2M: Uh oh- something broke\n");
+  return EFAULT; // Fail
 }
 
     // pinfo processData = malloc(sizeof(pinfo));
@@ -159,7 +164,7 @@ static unsigned long **find_sys_call_table(void) {
     offset += sizeof(void *);
   }
   
-  return NULL;
+  return NULL; // Success
 }
 
 static void disable_page_protection(void) {
