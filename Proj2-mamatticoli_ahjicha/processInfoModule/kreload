@@ -1,9 +1,13 @@
 #!/bin/bash
+cd userland
 make clean
 make
+cd ../kernelland
+make clean
+make
+cd ..
 sudo rmmod phase2module
-sudo insmod phase2module.ko
-gcc userland/phase2test.c -o userland/phase2test
+sudo insmod kernelland/phase2module.ko
 echo ===========
 echo    USER
 echo ===========

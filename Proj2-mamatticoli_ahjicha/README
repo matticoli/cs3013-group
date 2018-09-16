@@ -1,0 +1,12 @@
+Ann Jicha (ahjicha), Mikel Matticoli (mamatticoli)
+CS3013 Project 2
+
+Part 1:
+  cd openInterceptModule
+  make
+  sudo insmod openInterceptModule.ko
+  tail /var/log/syslog -n 10
+
+Part 2:
+  cd processInfoModule
+  ./kreload

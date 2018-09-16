@@ -5,6 +5,25 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+/*
+Write-Up:
+=========
+Process state m ust always be 0 since process is running when making system call
+Process PID changes for each new process, as OS assigns new PIDs to new processes
+Process parent PID of root process is the PID of the shell that the command is run from, which changes each time a new
+    terminal window is opened to run the program (or a new shell/instance)
+Process parent PID of the child processes will change according to which process they were forked from
+Youngest child is a consecutive PID after parent PID, depending on how many child processes have been created
+(i.e. if parent PID is 1234, first child will be 1235, second will be 1236, assuming children are created immidiately after parent)
+Younger and older siblings will change depending on how many child processes are created by a process's parent and in what order
+UID is constant, since the process is always being run by the same user
+Time passes, so start_time increases on consecutive runs.
+User time and system time will vary depending on how long it takes to execute the program- this likely has to do with what other operations
+are going on at any given time (i.e. resource availability) and whether or not the process is preempted
+The same is true for the user and system times of the child.
+*/
+
+
 // Define system call id as obtained from syscall table
 #define __NR_cs3013_syscall2 378
 

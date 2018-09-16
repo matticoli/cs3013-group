@@ -7,9 +7,14 @@
 #include <asm/cputime.h>
 #include <linux/uidgid.h>
 
+// 1 to print debug info to syslog, 0 to omit
+// Run `cat /var/log/syslog | grep "P2M" to print to stdout after system
+#define DEBUG_COMPILE 0
+
+// Store syscall table for making system calls
 unsigned long **sys_call_table;
 
-
+// Define process info struct (also defined in userland code)
 typedef struct processinfo {
   long state;
   pid_t pid;
@@ -28,12 +33,15 @@ typedef struct processinfo {
 asmlinkage long (*ref_sys_cs3013_syscall2)(void);
 
 asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
-   // printk(KERN_INFO "\nP2M: =========================\n");
-    //printk(KERN_INFO "\n\nP2M: Here's the struct: %p\n", info);
+  printk(KERN_INFO "\nP2M: Intercepted call to syscall2, gathering process info\n");
+  #if DEBUG_COMPILE
+    printk(KERN_INFO "\nP2M: =========================\n");
+    printk(KERN_INFO "\n\nP2M: Here's the struct: %p\n", info);
 
     printk(KERN_INFO "P2M: State: %ld\n", current->state);
     printk(KERN_INFO "P2M: PID: %ld\n", current->pid);
     printk(KERN_INFO "P2M: Parent PID: %ld\n", current->parent->pid);
+  #endif
 
   //to store user and system time of children
   long long int utimeChild = 0;
@@ -45,25 +53,17 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
   long int youngChild = 0; //store pid of youngest child seen
 
   list_for_each_entry(child, &(current->children), sibling) {
-    //printk(KERN_INFO "\tP2M: Child at %p has pid %d\n", child, child->pid);
-
-    if(child->start_time > latestStart){
+    if(child->start_time > latestStart) {
       youngChild = child->pid;
       latestStart = child->start_time;
     }
-  utimeChild = (utimeChild + child->utime);
-  stimeChild = (stimeChild + child->stime);
-
+    utimeChild = (utimeChild + child->utime);
+    stimeChild = (stimeChild + child->stime);
   } 
 
-  if(latestStart == 0){
+  if(latestStart == 0) {
     youngChild = -1;
   }
-
-  printk(KERN_INFO "P2M: Youngest Child PID: %ld\n", youngChild);
-
-
-  //printk(KERN_INFO "P2M: Siblings:\n");
 
   position = NULL; //position counter
   long long int closestOlder = 0; //store latest start seen
@@ -72,11 +72,14 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
   long int youngSibling = 0; //store pid of youngest child seen
   long int oldSibling = 0; //store pid of youngest child seen
 
-
+  // Iterate through child processes
   list_for_each_entry(sib, &(current->real_parent->children), sibling) {
     u64 diff;
     int isNegative;
   
+    // Check if diff is negative of positive
+    // (We had errors when trying to use the macros)
+    // There is no 128-bit integer in C :(
     if(sib->start_time >= current->start_time) {
         diff = sib->start_time - current->start_time;
         isNegative = 0;
@@ -85,30 +88,32 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
         isNegative = 1;
     }
 
-    // printk(KERN_INFO "\tP2M: PID %d DIFF %lld\n", sib-> pid, diff);
+    // Check if sibling is older than current and younger than oldSibling
     if(sib->pid != current->pid && isNegative && (diff < closestOlder || closestOlder ==0)) {
-      // printk(KERN_INFO "\tP2M: Le diff %lld\n", diff);
       oldSibling = sib->pid;
       closestOlder = sib->start_time;
     } 
-    // printk(KERN_INFO "P2M: <0 %d , oldest younger: %d\n", diff < 0 , (diff > closestYounger || closestYounger == 0));
+    // Check if sibling is younger than current and older than youngSibling
     if(sib->pid != current->pid && !isNegative && (diff < closestYounger || closestYounger == 0)) {
       youngSibling = sib->pid;
       closestYounger = sib->start_time;
     }
   }
 
-  if(closestYounger == 0){
+  // Set to -1 if no sibling of corresponding age was found
+  if(closestYounger == 0) {
     youngSibling = -1;
   }
-  if(closestOlder == 0){
+  if(closestOlder == 0) {
     oldSibling = -1;
   }
-  printk(KERN_INFO "P2M: Next Older Sibling PID: %ld\n", oldSibling);
-  printk(KERN_INFO "P2M: Next Younger Sibling PID: %ld\n", youngSibling);
+
+  #if DEBUG_COMPILE
+    printk(KERN_INFO "P2M: Youngest Child PID: %ld\n", youngChild);
+    printk(KERN_INFO "P2M: Next Older Sibling PID: %ld\n", oldSibling);
+    printk(KERN_INFO "P2M: Next Younger Sibling PID: %ld\n", youngSibling);
 
 
-    // printk(KERN_INFO "P2M: Youngest: %ld\n", current->children); TODO get data from list
     printk(KERN_INFO "P2M: UID: %ld\n", current->cred->uid);
     printk(KERN_INFO "P2M: Start Time: %llu\n", current->start_time);
     printk(KERN_INFO "P2M: User Time %llu\n", cputime_to_usecs(current->utime));
@@ -117,37 +122,40 @@ asmlinkage long new_sys_cs3013_syscall2(struct processinfo *info) {
 
     printk(KERN_INFO "P2M: User Time of Children %llu\n", cputime_to_usecs(utimeChild));
     printk(KERN_INFO "P2M: System Time of Children %llu\n", cputime_to_usecs(stimeChild));
+  #endif
 
+  /* COPY DATA TO USER */
+  //store in struct info
+  pinfo stats;
 
-/* COPY DATA TO USER */
-//store in struct info
-    printk(KERN_INFO "P2M: Print data to send to user\n");
-pinfo stats;
+  stats.state = current->state;
+  stats.pid = current->pid;
+  stats.parent_pid = current->parent->pid;
+  stats.youngest_child = youngChild;
+  stats.older_sibling = oldSibling;
+  stats.younger_sibling = youngSibling;
+  stats.uid = __kuid_val(current->cred->uid);
+  stats.start_time = current->start_time;
+  stats.user_time = cputime_to_usecs(current->utime);
+  stats.sys_time = cputime_to_usecs(current->stime);
+  stats.cutime = cputime_to_usecs(utimeChild);
+  stats.cstime = cputime_to_usecs(stimeChild);
 
-    printk(KERN_INFO "P2M: Fill data to send to user\n");
-stats.state = current->state;
-stats.pid = current->pid;
-stats.parent_pid = current->parent->pid;
-stats.youngest_child = youngChild;
-stats.older_sibling = oldSibling;
-stats.younger_sibling = youngSibling;
-stats.uid = __kuid_val(current->cred->uid);
-stats.start_time = current->start_time;
-stats.user_time = cputime_to_usecs(current->utime);
-stats.sys_time = cputime_to_usecs(current->stime);
-stats.cutime = cputime_to_usecs(utimeChild);
-stats.cstime = cputime_to_usecs(stimeChild);
+  #if DEBUG_COMPILE
+    printk(KERN_INFO "P2M: Send data to user\n");
+  #endif
+  if (copy_to_user(info, &stats, sizeof(stats))) {
+    #if DEBUG_COMPILE
+      printk(KERN_INFO "P2M: Uh oh- something broke\n");
+    #endif
+    return EFAULT; // Fail
+  }
+  // We made it!
+  return 0;
 
-printk(KERN_INFO "P2M: Send data to user\n");
-if (copy_to_user(info, &stats, sizeof(stats))) {
-  printk(KERN_INFO "P2M: Uh oh- something broke\n");
-  return EFAULT; // Fail
 }
 
-    // pinfo processData = malloc(sizeof(pinfo));
-    return 0;
 
-}
 static unsigned long **find_sys_call_table(void) {
   unsigned long int offset = PAGE_OFFSET;
   unsigned long **sct;
